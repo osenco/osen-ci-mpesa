@@ -12,10 +12,30 @@ Add the followiing in your `application/config/routes.php`
 $route['pesa'] = 'pesa';
 ```
 
-### Processing Payment Notification
+### Processing Payment Request
 In your payment processing view, point the form to `pesa/pay`
+Modify the `pay` method of the controller. For example:
+```php
+if (isset($_POST['amount'])) {
+    $phone 		= trim($_POST['phone']); 
+    $amount 	= trim($_POST['amount']); 
+    $reference 	= trim($_POST['reference']);
+    
+    $response = $this->mpesa->stk($phone, $amount, $reference);
+
+    echo json_encode($response);
+ }
+ ```
 
 ### Processing Payment Notification
+Modify the `reconcile` method of the controller. For example:
+```php
+echo json_encode($this->mpesa->reconcile(function ($response)
+{
+  return true;
+}));
+ ```
+ Note that your callback funcction should always return a boolean (true or false)
 
 ### Callback URLs
 Register your callback URLs by navigating to `pesa/register`
