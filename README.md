@@ -6,6 +6,11 @@ Simply copy the directories into your app.
 
 ## Edits & Usage
 Modify the controller inside `application/controllers/Pesa.php` to suit your needs
+### Routing
+Add the followiing in your `application/config/routes.php`
+```php
+$route['pesa'] = 'pesa';
+```
 
 ### Processing Payment Notification
 In your payment processing view, point the form to `pesa/pay`
