@@ -4,7 +4,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 class Mpesa {
     public $config;
 	
-	function __construct(array $configs = [])
+	function __construct(array $configs = array())
 	{
 		$defaults = array(
 			'env'               => 'sandbox',
@@ -13,7 +13,6 @@ class Mpesa {
 			'headoffice'        => '174379',
 		    'key'               => 'WiGveilGB2SKbXWi9IShIHDK7XfCtvWK',
 			'secret'            => 'mJBnR94sTlGFUkvM',
-			'username'          => 'apitest',
 			'passkey'           => 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919',
 			'validation_url'    => '/pesa/validate',
 			'confirmation_url'  => '/pesa/confirm',
@@ -53,7 +52,6 @@ class Mpesa {
 		return isset($result->access_token) ? $result->access_token : '';
 	}
 	
-	
 	/**
 	 * @param callable $callback Defined function or closure to process data and return true/false
 	 * 
@@ -62,13 +60,16 @@ class Mpesa {
 	public function validate($callback = null)
 	{
 		$data = json_decode(file_get_contents('php://input'), true);
+		if (!$data) {
+			return array('ResultCode' => 1, 'ResultDesc' => 'No data received');
+		}
 
 		if(is_null($callback)){
 			return array('ResultCode' => 0, 'ResultDesc' => 'Success');
 		} else {
 			return call_user_func_array($callback, array($data)) 
-			? array('ResultCode' => 0, 'ResultDesc' => 'Success') 
-			: array('ResultCode' => 1, 'ResultDesc' => 'Failed');
+				? array('ResultCode' => 0, 'ResultDesc' => 'Success') 
+				: array('ResultCode' => 1, 'ResultDesc' => 'Failed');
 		}
 	}
 	
@@ -80,22 +81,52 @@ class Mpesa {
 	public function confirm($callback = null)
 	{
 		$data = json_decode(file_get_contents('php://input'), true);
+		if (!$data) {
+			return array('ResultCode' => 1, 'ResultDesc' => 'No data received');
+		}
+
 		if(is_null($callback)){
 			return array('ResultCode' => 0, 'ResultDesc' => 'Success');
 		} else {
-
 			return call_user_func_array($callback, array($data)) 
-			? array('ResultCode' => 0, 'ResultDesc' => 'Success') 
-			: array('ResultCode' => 1, 'ResultDesc' => 'Failed');
+				? array('ResultCode' => 0, 'ResultDesc' => 'Success') 
+				: array('ResultCode' => 1, 'ResultDesc' => 'Failed');
 		}
 	}
 	
+	/**
+	 * @param callable $callback Defined function or closure to process data and return true/false
+	 * 
+	 * @return array
+	 */
+	public function reconcile($callback = null)
+	{
+		$data = json_decode(file_get_contents('php://input'), true);
+		if (!$data) {
+			return array('ResultCode' => 1, 'ResultDesc' => 'No data received');
+		}
+
+		if(is_null($callback)){
+			return array('ResultCode' => 0, 'ResultDesc' => 'Success');
+		} else {
+			return call_user_func_array($callback, array($data)) 
+				? array('ResultCode' => 0, 'ResultDesc' => 'Success') 
+				: array('ResultCode' => 1, 'ResultDesc' => 'Failed');
+		}
+	}
+	
+	/**
+	 * @param callable $callback Defined function or closure to process data and return true/false
+	 * 
+	 * @return array
+	 */
 	public function register($callback = null)
 	{
 		$token      = $this->token();
-		$endpoint   = ($this->config->env == 'live') ? 
-		'https://api.safaricom.co.ke/mpesa/c2b/v1/registerurl' : 
-		'https://sandbox.safaricom.co.ke/mpesa/c2b/v1/registerurl';
+		$endpoint   = ($this->config->env == 'live') 
+			? 'https://api.safaricom.co.ke/mpesa/c2b/v1/registerurl'
+			: 'https://sandbox.safaricom.co.ke/mpesa/c2b/v1/registerurl';
+
 		$curl       = curl_init();
 		curl_setopt($curl, CURLOPT_URL, $endpoint);
 		curl_setopt(
@@ -138,15 +169,22 @@ class Mpesa {
 		}
 	}
 
-	public function simulate($phone, $amount = 10, $reference = 'TRX', $command = 'CustomerPayBillOnline')
+    /**
+     * @param $phone The MSISDN sending the funds.
+     * @param $amount The amount to be transacted.
+     * @param $reference Used with M-Pesa PayBills.
+     * 
+     * @return array Response
+     */
+	public function simulate($phone, $amount = 10, $reference = 'TRX')
 	{
 		$token = $this->token();
 		$phone = (substr($phone, 0,1) == '+') ? str_replace('+', '', $phone) : $phone;
 		$phone = (substr($phone, 0,1) == '0') ? preg_replace('/^0/', '254', $phone) : $phone;
 
 		$endpoint = ($this->config->env == 'live') 
-		? 'https://api.safaricom.co.ke/mpesa/c2b/v1/simulate' 
-		: 'https://sandbox.safaricom.co.ke/mpesa/c2b/v1/simulate';
+			? 'https://api.safaricom.co.ke/mpesa/c2b/v1/simulate' 
+			: 'https://sandbox.safaricom.co.ke/mpesa/c2b/v1/simulate';
 
 		$curl = curl_init();
 		curl_setopt($curl, CURLOPT_URL, $endpoint);
@@ -160,7 +198,7 @@ class Mpesa {
 		);
 		$curl_post_data     = array(
 			'ShortCode'     => $this->config->shortcode,
-			'CommandID'     => $command,
+			'CommandID'     => ($this->config->type == 4) ? 'CustomerPayBillOnline' : 'CustomerBuyGoodsOnline',
 			'Amount'        => round($amount),
 			'Msisdn'        => $phone,
 			'BillRefNumber' => $reference
@@ -185,7 +223,7 @@ class Mpesa {
      * 
      * @return array Response
      */
-    public function stk($phone, $amount, $reference = 'ACCOUNT', $description = 'Transaction Description', $remark = 'Remark')
+    public function request($phone, $amount, $reference = 'ACCOUNT', $description = 'Transaction Description', $remark = 'Remark')
     {
         $token      = $this->token();
         
@@ -231,5 +269,4 @@ class Mpesa {
 		
 		return json_decode($response, true);
     }
-
 }
