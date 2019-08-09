@@ -63,7 +63,8 @@ $result = $this->mpesa->reconcile(function ($response)
         $phone                  = $CallbackMetadata[4]['Value'];
     }
 
-    $payment 			= $this->db->query("SELECT FROM {$this->table} WHERE request='{$response['MerchantRequestID']}';")->row();
+    $query				= "SELECT * FROM {$this->table} WHERE request='{$merchantRequestID}';";
+			$payment			= $this->db->query($query)->row();
     $payment->phone    	= $phone;
     $payment->amount   	= round($amount);
     $payment->receipt   = $mpesaReceiptNumber;
@@ -102,7 +103,8 @@ $result = $this->mpesa->confirm(function ($response)
     $MiddleName         = $response['MiddleName'];
     $LastName           = $response['LastName'];
 
-    $payment 			= $this->db->query("SELECT FROM {$this->table} WHERE reference='{$BillRefNumber}';")->row();
+    $query				= "SELECT * FROM {$this->table} WHERE reference='{$BillRefNumber}';";
+            $payment			= $this->db->query($query)->row();
     $amount 			= round($TransAmount);
     $payment->phone    	= $MSISDN;
     $payment->amount   	= $amount;
